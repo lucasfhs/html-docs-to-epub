@@ -6,3 +6,4 @@ ebooklib>=0.18
 tqdm>=4.65.0
 rich>=13.0.0
 readability-lxml>=0.8.1
+python-dotenv>=1.0.0

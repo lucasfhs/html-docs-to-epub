@@ -84,6 +84,7 @@ Desktop.ini
 # Environments
 *.env
 .env
+!.env.example
 env/
 venv/
 

@@ -25,6 +25,15 @@ class Config:
     exclude_pattern: str = ""
     verbose: bool = False
 
+    # Send to Kindle settings
+    send_to_kindle: bool = False
+    kindle_email: str = ""
+    smtp_email: str = ""
+    smtp_password: str = ""
+    smtp_server: str = ""
+    smtp_port: int = 587
+    smtp_use_tls: bool = True
+
     user_agent: str = (
         "Mozilla/5.0 (compatible; DocToEPUB/1.0; +https://github.com/doc-to-epub)"
     )

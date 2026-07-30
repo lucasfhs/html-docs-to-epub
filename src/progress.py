@@ -133,6 +133,10 @@ def show_success(message: str) -> None:
 def show_summary(stats: dict) -> None:
     """Display the final conversion summary."""
     console.print()
+    sent_line = ""
+    if "sent_to_kindle" in stats:
+        status = "[green]Sent[/]" if stats["sent_to_kindle"] else "[red]Failed[/]"
+        sent_line = f"\nSent to Kindle: {status}"
     summary = Panel(
         Text.from_markup(
             f"[bold cyan]Process Complete![/]\n\n"
@@ -143,6 +147,7 @@ def show_summary(stats: dict) -> None:
             f"Images skipped: [yellow]{stats.get('images_skipped', 0)}[/]\n"
             f"EPUB size: [cyan]{stats.get('epub_size', '0 KB')}[/]\n"
             f"Output file: [green]{stats.get('output_file', '')}[/]"
+            f"{sent_line}"
         ),
         title="[bold green]Summary[/]",
         border_style="green",

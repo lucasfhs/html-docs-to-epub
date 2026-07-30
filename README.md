@@ -17,6 +17,7 @@ Transforme sites de documentacao online em arquivos EPUB compativeis com Kindle.
 - [How It Works](#how-it-works)
 - [Cache System](#cache-system)
 - [Kindle Compatibility](#kindle-compatibility)
+- [Send to Kindle](#send-to-kindle)
 - [Supported Sites](#supported-sites)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -38,6 +39,7 @@ Transforme sites de documentacao online em arquivos EPUB compativeis com Kindle.
 | Cache System | Resume interrupted conversions without starting over |
 | Progress Bars | Visual feedback for all long operations |
 | Respectful Crawling | Rate limiting and robots.txt support |
+| Send to Kindle | Send EPUB directly to your Kindle via email (SMTP) |
 
 ---
 
@@ -81,6 +83,15 @@ Generating EPUB: 100%|████████████████| 1/1
 ```
 Phase 4: Validating EPUB...
 ✓ EPUB is valid!
+```
+
+### Sending to Kindle
+
+```
+Phase 5: Sending to Kindle...
+Using SMTP server: smtp.gmail.com:587
+Connecting to smtp.gmail.com:587...
+✓ EPUB sent to user@kindle.com
 
 ┌─────────────────────── Summary ────────────────────────┐
 │ Pages found:        48                                 │
@@ -90,6 +101,7 @@ Phase 4: Validating EPUB...
 │ Images skipped:     3                                  │
 │ EPUB size:          18.4 MB                            │
 │ Output file:        output/hermes-documentation.epub   │
+│ Sent to Kindle:     Sent                               │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -150,7 +162,7 @@ playwright install chromium
 python main.py
 ```
 
-The program will guide you through the process step by step.
+The program will guide you through the process step by step, including an option to send the EPUB to your Kindle via email.
 
 ### Command Line Mode
 
@@ -172,9 +184,21 @@ python main.py https://hermes.aios.com.br/docs \
   --delay 0.3
 ```
 
+### Send to Kindle Example
+
+```bash
+python main.py https://site.com/docs \
+  --send-to-kindle \
+  --kindle-email user@kindle.com \
+  --smtp-email user@gmail.com \
+  --smtp-password your-app-password
+```
+
 ---
 
 ## Command Line Arguments
+
+### General Options
 
 | Argument | Short | Description | Default |
 |----------|-------|-------------|---------|
@@ -193,6 +217,18 @@ python main.py https://hermes.aios.com.br/docs \
 | `--include` | - | Regex pattern for URLs to include | (none) |
 | `--exclude` | - | Regex pattern for URLs to exclude | (none) |
 | `--verbose` | `-v` | Enable verbose output | false |
+
+### Send to Kindle Options
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--send-to-kindle` | Send EPUB to Kindle via email after generation | false |
+| `--kindle-email` | Kindle email address (e.g. `user@kindle.com`) | (none) |
+| `--smtp-email` | Sender email address for SMTP | (none) |
+| `--smtp-password` | Sender email password or app password | (none) |
+| `--smtp-server` | SMTP server address (auto-detected from email) | (none) |
+| `--smtp-port` | SMTP server port | 587 |
+| `--smtp-no-tls` | Disable TLS encryption for SMTP connection | false |
 
 ---
 
@@ -275,6 +311,13 @@ Verifies the EPUB structure:
 - Working navigation
 - Valid XHTML content
 
+### 11. Send to Kindle (Optional)
+
+If enabled, sends the generated EPUB to your Kindle via email:
+- Auto-detects SMTP server from email address
+- Supports TLS encryption (configurable)
+- Works with Gmail, Outlook, Yahoo, Zoho, and more
+
 ---
 
 ## Cache System
@@ -339,26 +382,79 @@ The generated EPUB files follow conservative guidelines for maximum compatibilit
 - Proper navigation structure (NCX + Navigation Document)
 - UTF-8 encoding for special characters
 
-### Sending to Kindle
+---
 
-**Method 1: USB Transfer**
+## Send to Kindle
 
-1. Connect your Kindle via USB
-2. Copy the `.epub` file to the `documents` folder
-3. Disconnect and enjoy
+The tool can send the generated EPUB directly to your Kindle via email using SMTP.
 
-**Method 2: Send to Kindle**
+### Quick Start
 
-1. Go to [Amazon Send to Kindle](https://www.amazon.com/sendtokindle)
-2. Select your EPUB file
-3. Choose your target Kindle device
-4. The file will be delivered wirelessly
+**Interactive mode:**
 
-**Method 3: Email**
+```bash
+python main.py
+# Answer "y" when asked about sending to Kindle
+```
 
-1. Find your Kindle email address (Settings > Your Account)
-2. Send the EPUB file as an attachment to your Kindle email
-3. The file will be converted and delivered
+**CLI mode:**
+
+```bash
+python main.py https://site.com/docs \
+  --send-to-kindle \
+  --kindle-email user@kindle.com \
+  --smtp-email user@gmail.com \
+  --smtp-password your-app-password
+```
+
+### Gmail Setup
+
+1. Go to [Google Account Security](https://myaccount.google.com/security)
+2. Enable 2-Step Verification
+3. Go to [App Passwords](https://myaccount.google.com/apppasswords)
+4. Generate a new app password for "Mail"
+5. Use that password with `--smtp-password`
+
+### Zoho Setup
+
+```bash
+python main.py https://site.com/docs \
+  --send-to-kindle \
+  --kindle-email user@kindle.com \
+  --smtp-email user@zoho.com \
+  --smtp-password your-zoho-password \
+  --smtp-server smtp.zoho.com \
+  --smtp-port 587
+```
+
+### Using .env File (Recommended)
+
+Create a `.env` file in the project root to avoid typing credentials every time:
+
+```
+KINDLE_EMAIL=your-kindle@kindle.com
+SMTP_EMAIL=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USE_TLS=true
+```
+
+The `.env` file is already in `.gitignore` and will not be committed.
+
+See `.env.example` for a template.
+
+### Supported Providers
+
+| Provider | SMTP Server | Port | TLS |
+|----------|-------------|------|-----|
+| Gmail | smtp.gmail.com | 587 | Yes |
+| Outlook/Hotmail | smtp.office365.com | 587 | Yes |
+| Yahoo | smtp.mail.yahoo.com | 587 | Yes |
+| iCloud | smtp.mail.me.com | 587 | Yes |
+| Zoho | smtp.zoho.com | 587 | Yes |
+
+For other providers, the tool auto-detects the SMTP server from the email domain.
 
 ---
 
@@ -382,7 +478,7 @@ The generated EPUB files follow conservative guidelines for maximum compatibilit
 
 1. Use a specific documentation URL (e.g., `/docs/getting-started/`)
 2. For JS-heavy sites, try `--use-playwright`
-3. Use `--include` to filter specific sections
+3. Use `--include` to target specific sections
 4. Check `--verbose` output for debugging
 
 ---
@@ -420,6 +516,14 @@ The generated EPUB files follow conservative guidelines for maximum compatibilit
 - Try `--use-playwright` for dynamic sites
 - Use `--include` to target specific sections
 
+### Send to Kindle fails
+
+- Check your email and password are correct
+- For Gmail, use an App Password (not your regular password)
+- Verify the SMTP server and port are correct
+- Try `--verbose` to see detailed SMTP logs
+- Some providers block automated emails - check your spam folder
+
 ---
 
 ## Project Structure
@@ -430,29 +534,31 @@ documentation-to-epub/
 ├── pyproject.toml          # Project configuration
 ├── requirements.txt        # Dependencies
 ├── README.md               # Documentation
-├── .gitignore             # Git ignore rules
+├── .gitignore              # Git ignore rules
+├── .env.example            # Environment variables template
 ├── assets/
-│   └── book.css           # EPUB stylesheet
+│   └── book.css            # EPUB stylesheet
 ├── src/
 │   ├── __init__.py
-│   ├── cli.py             # Command-line interface
-│   ├── config.py          # Configuration
-│   ├── models.py          # Data models
-│   ├── crawler.py         # Web crawler
-│   ├── sitemap.py         # Sitemap parser
-│   ├── extractor.py       # Content extraction
-│   ├── cleaner.py         # HTML cleaning
-│   ├── image_processor.py # Image processing
-│   ├── link_converter.py  # Link conversion
-│   ├── chapter_builder.py # Chapter building
-│   ├── epub_builder.py    # EPUB generation
-│   ├── validator.py       # EPUB validation
-│   ├── cache.py           # Cache system
-│   ├── progress.py        # Progress display
-│   └── utils.py           # Utilities
-├── tests/                 # Automated tests
-├── output/                # Generated EPUBs
-└── logs/                  # Conversion logs
+│   ├── cli.py              # Command-line interface
+│   ├── config.py           # Configuration
+│   ├── models.py           # Data models
+│   ├── crawler.py          # Web crawler
+│   ├── sitemap.py          # Sitemap parser
+│   ├── extractor.py        # Content extraction
+│   ├── cleaner.py          # HTML cleaning
+│   ├── image_processor.py  # Image processing
+│   ├── link_converter.py   # Link conversion
+│   ├── chapter_builder.py  # Chapter building
+│   ├── epub_builder.py     # EPUB generation
+│   ├── validator.py        # EPUB validation
+│   ├── sender.py           # Send to Kindle via email
+│   ├── cache.py            # Cache system
+│   ├── progress.py         # Progress display
+│   └── utils.py            # Utilities
+├── tests/                  # Automated tests
+├── output/                 # Generated EPUBs
+└── logs/                   # Conversion logs
 ```
 
 ---

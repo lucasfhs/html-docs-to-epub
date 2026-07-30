@@ -85,6 +85,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exclude", help="Regex pattern for URLs to exclude")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
+    # Send to Kindle options
+    parser.add_argument(
+        "--send-to-kindle",
+        action="store_true",
+        help="Send the EPUB to Kindle via email after generation",
+    )
+    parser.add_argument("--kindle-email", help="Kindle email address (e.g. user@kindle.com)")
+    parser.add_argument("--smtp-email", help="Sender email address for SMTP")
+    parser.add_argument("--smtp-password", help="Sender email password or app password")
+    parser.add_argument("--smtp-server", help="SMTP server address (auto-detected from email)")
+    parser.add_argument(
+        "--smtp-port", type=int, default=587, help="SMTP server port (default: 587)"
+    )
+    parser.add_argument(
+        "--smtp-no-tls",
+        action="store_true",
+        help="Disable TLS encryption for SMTP connection",
+    )
+
     return parser.parse_args()
 
 
@@ -103,6 +122,34 @@ def get_config_interactive() -> Config:
     # Ensure URL has scheme
     if not config.url.startswith(("http://", "https://")):
         config.url = "https://" + config.url
+
+    # Ask about sending to Kindle
+    console.print()
+    console.print("[bold green]Send to Kindle?[/]")
+    send_choice = console.input("[cyan]Send EPUB to Kindle via email? (y/n) > [/]").strip().lower()
+    if send_choice in ("y", "yes", "s", "sim"):
+        config.send_to_kindle = True
+
+        # Load credentials from .env if available
+        _load_env_credentials(config)
+
+        # Kindle email
+        if not config.kindle_email:
+            console.print("[bold green]Kindle email address:[/]")
+            console.print("[dim]  (found in Kindle Settings > Your Account)[/]")
+            config.kindle_email = console.input("[cyan]> [/]").strip()
+
+        # Sender email (SMTP)
+        if not config.smtp_email:
+            console.print("[bold green]Your email address (sender):[/]")
+            console.print("[dim]  (Gmail, Outlook, Yahoo, etc.)[/]")
+            config.smtp_email = console.input("[cyan]> [/]").strip()
+
+        # Sender password / app password
+        if not config.smtp_password:
+            console.print("[bold green]Email password or app password:[/]")
+            console.print("[dim]  (For Gmail, use an App Password)[/]")
+            config.smtp_password = console.input("[cyan]> [/]").strip()
 
     return config
 
@@ -134,6 +181,15 @@ def get_config_from_args(args: argparse.Namespace) -> Config:
     config.exclude_pattern = args.exclude or ""
     config.verbose = args.verbose
 
+    # Send to Kindle settings
+    config.send_to_kindle = args.send_to_kindle
+    config.kindle_email = args.kindle_email or ""
+    config.smtp_email = args.smtp_email or ""
+    config.smtp_password = args.smtp_password or ""
+    config.smtp_server = args.smtp_server or ""
+    config.smtp_port = args.smtp_port
+    config.smtp_use_tls = not args.smtp_no_tls
+
     return config
 
 
@@ -151,6 +207,36 @@ def generate_default_title(url: str) -> str:
         return f"{parts[-1].replace('-', ' ').title()} Documentation"
 
     return f"{domain} Documentation"
+
+
+def _load_env_credentials(config: Config) -> None:
+    """Load SMTP credentials from .env file if available."""
+    try:
+        from dotenv import load_dotenv
+        import os
+
+        load_dotenv()
+
+        if not config.kindle_email:
+            config.kindle_email = os.getenv("KINDLE_EMAIL", "")
+        if not config.smtp_email:
+            config.smtp_email = os.getenv("SMTP_EMAIL", "")
+        if not config.smtp_password:
+            config.smtp_password = os.getenv("SMTP_PASSWORD", "")
+        if not config.smtp_server:
+            config.smtp_server = os.getenv("SMTP_SERVER", "")
+        if config.smtp_port == 587:
+            port_str = os.getenv("SMTP_PORT", "")
+            if port_str:
+                config.smtp_port = int(port_str)
+        tls_str = os.getenv("SMTP_USE_TLS", "")
+        if tls_str:
+            config.smtp_use_tls = tls_str.lower() in ("true", "1", "yes", "on")
+
+        if config.kindle_email or config.smtp_email:
+            show_info("Loaded email credentials from .env file")
+    except ImportError:
+        pass
 
 
 def run_conversion(config: Config) -> None:
@@ -280,6 +366,28 @@ def run_conversion(config: Config) -> None:
             "epub_size": f"{epub_size:.1f} MB",
             "output_file": str(output_path),
         }
+
+        # Phase 5: Send to Kindle (if enabled)
+        if config.send_to_kindle and config.kindle_email and config.smtp_email and config.smtp_password:
+            show_info("Phase 5: Sending to Kindle...")
+            from .sender import send_to_kindle
+
+            sent = send_to_kindle(
+                epub_path=output_path,
+                kindle_email=config.kindle_email,
+                sender_email=config.smtp_email,
+                sender_password=config.smtp_password,
+                smtp_server=config.smtp_server,
+                smtp_port=config.smtp_port,
+                use_tls=config.smtp_use_tls,
+            )
+            stats["sent_to_kindle"] = sent
+        elif config.send_to_kindle:
+            # Missing credentials in CLI mode - warn the user
+            show_warning(
+                "Send to Kindle was requested but credentials are missing.\n"
+                "  Provide --kindle-email, --smtp-email, and --smtp-password."
+            )
 
         # Complete session
         cache.complete_session(stats)
